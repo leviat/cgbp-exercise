@@ -49,20 +49,49 @@ def read_instance(filename):
         # TODO: read in the distance matrix and store the data in distances
         ##############################################################################
         
-        
+        for i in range(nlocations):
+            line = fp.readline()
+            sp = line.split()
+            print(line)
+            if len(sp) > 0 and sp[0].isnumeric():
+                assert len(sp) == nlocations
+                is_int = True
+                for j in range(nlocations):
+                    is_int = is_int and is_integer(sp[j])
+                assert is_int
+                for j in range(nlocations):
+                    distances[i,j] = sp[j]
+                
             
         # Reading the demands
         demands = {}
         #############################################################################
         # TODO: read in the demands 
         #############################################################################
-        
+        line = fp.readline()
+        sp = line.split()
+        if len(sp) > 0 and sp[0].isnumeric():
+            assert len(sp) == nlocations
+            for j in range(nlocations):
+                is_int = is_int and is_integer(sp[j])
+            assert is_int
+            for j in range(nlocations):
+                demands[j] = sp[j]
+
           
         # Reading the capacities
         capacities = {}
         #############################################################################
         # TODO: read in the capacities
         #############################################################################
-        
+        line = fp.readline()
+        sp = line.split()
+        if len(sp) > 0 and sp[0].isnumeric():
+            assert len(sp) == nlocations
+            for j in range(nlocations):
+                is_int = is_int and is_integer(sp[j])
+            assert is_int
+            for j in range(nlocations):
+                capacities[j] = sp[j]
         
     return nlocations, nclusters, distances, demands, capacities
