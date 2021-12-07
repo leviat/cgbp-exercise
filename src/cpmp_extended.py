@@ -7,6 +7,7 @@ Created on Mon Oct 26 17:39:18 2020
 """
 
 
+from _typeshed import StrOrBytesPath
 from pyscipopt import Model, SCIP_PARAMSETTING, scip
 from pyscipopt.scip import quicksum
 
@@ -64,20 +65,29 @@ def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveintege
     #############################################################################################################
     
     # Create the assignment constraints
-        
+    master.addConss(assignmentConss, separate=False, modifiable=True)
+    '''
+    for i in range(nlocations):
+        assignmentConss.append(-quicksum(patternVar * 'x' ) <= -1)
+    '''
     
     # Create the convexity constraints
-     
+    master.addConss(convexityConss, separate=False, modifiable=True)
+    '''
+    for j in range(nlocations):
+        convexityConss.append(quicksum(patternVar for patternVar in patternVars[j]) <= 1)
+    '''
+    
     
     # Create the p-median constraint
-       
+    master.addConss(pmedianCons, separate=False, modifiable=True)
     
     #
     # Prepare the pricer data
     #
     
     # Dictionary of pattern variables, keys are the medians, value is an array of pattern variables
-    patternVars = []
+    patternVars = {}
     # Dictionary of counters, for each median we count how many variables we have generated. 
     nVarsMedian = {}
     for median in range(nlocations):
@@ -115,7 +125,7 @@ def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveintege
             forbiddenassignments[median,location] = False
     pricer.forbiddenassignments = forbiddenassignments
     
-    
+    master.writeLP(filename="test.lp")
     master.optimize()
     
 if __name__ == '__main__':
@@ -124,7 +134,7 @@ if __name__ == '__main__':
     
     # If solveinteger is True, we will solve the problem as an Integer Program, i.e., variables will be added as binary 'B' variables.
     # If solveinteger is False, we will solve the LP-relaxation, i.e., variables will be added as continuous 'C' variables.
-    solveinteger = True
+    solveinteger = False
     
     # If semiassignmentbranching is True, we will use semiassignment branching. 
     # If semiassignmentbranching is False, we will not use semiassignment branching. 
