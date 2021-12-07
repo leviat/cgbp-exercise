@@ -7,7 +7,8 @@ Created on Mon Oct 26 17:39:18 2020
 """
 
 
-from _typeshed import StrOrBytesPath
+#from _typeshed import StrOrBytesPath
+from numpy import promote_types
 from pyscipopt import Model, SCIP_PARAMSETTING, scip
 from pyscipopt.scip import quicksum
 
@@ -64,30 +65,34 @@ def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveintege
     # all constraints in the form "<=". How can you achieve this without losing correctness of the model?
     #############################################################################################################
     
+    patternVars = []
+
     # Create the assignment constraints
-    master.addConss(assignmentConss, separate=False, modifiable=True)
-    '''
     for i in range(nlocations):
-        assignmentConss.append(-quicksum(patternVar * 'x' ) <= -1)
-    '''
+        assignmentConss.append(-quicksum(patternVar \
+            for median in range(nlocations) \
+            for patternVar in patternVars \
+            if patternVars.data.median == median if i in patternVar.locations) \
+            <= -1)
     
-    # Create the convexity constraints
+    master.addConss(assignmentConss, separate=False, modifiable=True)
+    
+    # Create the convexity constraints 
+    for median in range(nlocations):
+        convexityConss.append(quicksum(patternVar for patternVar in patternVars if patternVars.data.median == median) <= 1)
+    
     master.addConss(convexityConss, separate=False, modifiable=True)
-    '''
-    for j in range(nlocations):
-        convexityConss.append(quicksum(patternVar for patternVar in patternVars[j]) <= 1)
-    '''
-    
     
     # Create the p-median constraint
-    master.addConss(pmedianCons, separate=False, modifiable=True)
+    pmedianCons = (quicksum(patternVar for patternVar in patternVars) <= nclusters)
+    master.addCons(pmedianCons, separate=False, modifiable=True)
     
     #
     # Prepare the pricer data
     #
-    
-    # Dictionary of pattern variables, keys are the medians, value is an array of pattern variables
-    patternVars = {}
+
+    # List of PatternVarData with pattern variables. We can access the extreme points by .median: int, .locations: List[int]
+    patternVars = []
     # Dictionary of counters, for each median we count how many variables we have generated. 
     nVarsMedian = {}
     for median in range(nlocations):
@@ -125,7 +130,7 @@ def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveintege
             forbiddenassignments[median,location] = False
     pricer.forbiddenassignments = forbiddenassignments
     
-    master.writeLP(filename="test.lp")
+    #master.writeLP(filename="test.lp")
     master.optimize()
     
 if __name__ == '__main__':
