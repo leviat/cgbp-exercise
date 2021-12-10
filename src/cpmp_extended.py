@@ -7,8 +7,6 @@ Created on Mon Oct 26 17:39:18 2020
 """
 
 
-#from _typeshed import StrOrBytesPath
-from numpy import promote_types
 from pyscipopt import Model, SCIP_PARAMSETTING, scip
 from pyscipopt.scip import quicksum
 
@@ -65,27 +63,18 @@ def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveintege
     # all constraints in the form "<=". How can you achieve this without losing correctness of the model?
     #############################################################################################################
     
-    patternVars = []
-
     # Create the assignment constraints
-    for i in range(nlocations):
-        assignmentConss.append(-quicksum(patternVar \
-            for median in range(nlocations) \
-            for patternVar in patternVars \
-            if patternVars.data.median == median if i in patternVar.locations) \
-            <= -1)
-    
-    master.addConss(assignmentConss, separate=False, modifiable=True)
-    
+    for location in range(nlocations):
+        cons = master.addCons(quicksum([0]) <= -1, separate=False, modifiable=True)
+        assignmentConss.append(cons)
+        
     # Create the convexity constraints 
     for median in range(nlocations):
-        convexityConss.append(quicksum(patternVar for patternVar in patternVars if patternVars.data.median == median) <= 1)
-    
-    master.addConss(convexityConss, separate=False, modifiable=True)
+        cons = master.addCons(quicksum([0]) <= 1, separate=False, modifiable=True)
+        convexityConss.append(cons)    
     
     # Create the p-median constraint
-    pmedianCons = (quicksum(patternVar for patternVar in patternVars) <= nclusters)
-    master.addCons(pmedianCons, separate=False, modifiable=True)
+    pmedianCons = master.addCons(quicksum([0]) <= nclusters, separate=False, modifiable=True)
     
     #
     # Prepare the pricer data
@@ -130,8 +119,9 @@ def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveintege
             forbiddenassignments[median,location] = False
     pricer.forbiddenassignments = forbiddenassignments
     
-    #master.writeLP(filename="test.lp")
     master.optimize()
+    master.writeLP(filename="test.lp")
+
     
 if __name__ == '__main__':
     # Change the name of the instance to test different instances

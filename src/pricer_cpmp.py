@@ -15,7 +15,7 @@ from pyscipopt.scip import quicksum
 from dataclasses import dataclass
 from typing import List
 
-
+import math
 
 EPS = 1.e-10
 LONG_INT_MAX = 9223372036854775807
@@ -80,6 +80,7 @@ class PricerCPMP(Pricer):
         ###########################################################################################
         # TODO: compute the total service costs of the new cluster, to be stored in 'cost' 
         ###########################################################################################
+        cost = sum([self.distances[location, median] for location in sollocations]) # total distances of new generated cluster
         
         
         # create a new variable representing the newly found cluster, add the corresponding data and add it to the master problem 
@@ -97,7 +98,15 @@ class PricerCPMP(Pricer):
         #   * to the convexity constraint of the median
         #   * to the p-median constraint
         ###########################################################################################
-
+        # p-median constraint
+        self.model.addConsCoeff(self.pmedianCons, newVar, 1)
+        # convexity constraint
+        cons = self.convexityConss[median]
+        self.model.addConsCoeff(cons, newVar, 1)
+        # assignment constraint
+        for location in sollocations:
+            cons = self.assignmentConss[location]
+            self.model.addConsCoeff(cons, newVar, -1)
         
 
         newVar.data = PatternVarData(median, sollocations)
@@ -134,6 +143,16 @@ class PricerCPMP(Pricer):
             # NOTE: The profits depend on whether you do reduced cost pricing or Farkas pricing!!
             ################################################################################################
             
+            for location in range(self.nlocations):
+                if not self.isAssignmentForbidden(median, location):
+                    items.append(location)
+                    itemDemands.append(self.demands[location])
+
+                    if redcostpricing == True: # reduced cost pricing
+                        profits.append(-self.model.getDualsolLinear(self.assignmentConss[location]) - self.distances[(location, median)])
+                    else: # Farkas
+                        profits.append(-self.model.getDualfarkasLinear(self.assignmentConss[location]))
+
             
 
             ####################################################################################################
@@ -149,11 +168,17 @@ class PricerCPMP(Pricer):
             
             # These are the names of the variables used in knapsackSolver.Init() below, feel free to remove 
             # this initialization if necessary
+            myItems = []
             profitsSolver = []
             itemDemandsSolver = [[]]
-            capacitiesSolver = []
+            capacitiesSolver = [self.capacities[median]]
             
-            
+            for i in range(len(items)):
+                if profits[i] >= 0:
+                    # TODO: is this the right method to handle non-integer profits?
+                    profitsSolver.append(int(math.ceil(profits[i] * 1e6)))
+                    itemDemandsSolver[0].append(itemDemands[i])
+                    myItems.append(items[i]) # add the associated location for reprojection
             
             # initialize the ortools Knapsack solver
             knapsackSolver = pywrapknapsack_solver.KnapsackSolver(pywrapknapsack_solver.KnapsackSolver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER, 'KnapsackExample')
@@ -181,11 +206,21 @@ class PricerCPMP(Pricer):
             ####################################################################################################
             
             score = 0
-            
-            
-                
-             
+
             if True:
+                self.addColumn(median, packed_items)
+
+            if redcostpricing == True: # reduced cost pricing
+                score += sum([self.model.getDualsolLinear(self.assignmentConss[location]) for location in packed_items])
+                score += sum([self.distances[location, median] for location in packed_items])
+                score -= self.model.getDualsolLinear(self.pmedianCons)
+                score -= self.model.getDualsolLinear(self.convexityConss[median])
+            else: # farkas 
+                score += sum([self.model.getDualfarkasLinear(self.assignmentConss[location]) for location in packed_items])
+                score -= self.model.getDualfarkasLinear(self.pmedianCons)
+                score -= self.model.getDualfarkasLinear(self.convexityConss[median])
+             
+            if score < 0 - EPS:
                 self.addColumn(median, packed_items)
             
             

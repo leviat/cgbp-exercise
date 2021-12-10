@@ -60,7 +60,7 @@ def read_instance(filename):
                     is_int = is_int and is_integer(sp[j])
                 assert is_int
                 for j in range(nlocations):
-                    distances[i,j] = sp[j]
+                    distances[i,j] = int(sp[j])
                 
             
         # Reading the demands
@@ -76,7 +76,7 @@ def read_instance(filename):
                 is_int = is_int and is_integer(sp[j])
             assert is_int
             for j in range(nlocations):
-                demands[j] = sp[j]
+                demands[j] = int(sp[j])
 
           
         # Reading the capacities
@@ -92,6 +92,6 @@ def read_instance(filename):
                 is_int = is_int and is_integer(sp[j])
             assert is_int
             for j in range(nlocations):
-                capacities[j] = sp[j]
+                capacities[j] = int(sp[j])
         
     return nlocations, nclusters, distances, demands, capacities
