@@ -207,9 +207,6 @@ class PricerCPMP(Pricer):
             
             score = 0
 
-            if True:
-                self.addColumn(median, packed_items)
-
             if redcostpricing == True: # reduced cost pricing
                 score += sum([self.model.getDualsolLinear(self.assignmentConss[location]) for location in packed_items])
                 score += sum([self.distances[location, median] for location in packed_items])
