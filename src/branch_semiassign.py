@@ -39,6 +39,13 @@ class BranchruleSemiassign(Branchrule):
         # NOTE: For implementational reasons reasons, the location is the *first* index here
         # and the median the *second*!
         ########################################################################################
+        master_vars = self.pricer.patternVars
+
+        for master_var in self.pricer.patternVars:
+            median = master_var.data.median
+            locations = master_var.data.locations
+            for location in locations:
+                assignments[location][median] += self.model.getVal(master_var) # why is sol none?
         
         
         return {'result':SCIP_RESULT.SUCCESS}
@@ -86,7 +93,14 @@ class BranchruleSemiassign(Branchrule):
             #   * the sum of all fractional assignments (totfrac)
             #   * the sum of all fractional assignments to an even median (halffrac)
             ##########################################################################################
-            
+            for j in range(nlocations):
+                fractional = self.model.frac(assignments[i][j])
+                
+                if fractional > 0:
+                    nfracmedians += 1
+                    totfrac += assignments[i][j]
+                    if (j % 2 == 0): # check if median is even
+                        halffrac += assignments[i][j]
             
                 
             minfracdiff = self.model.infinity()
@@ -130,7 +144,10 @@ class BranchruleSemiassign(Branchrule):
             # cannot be assigned to the location in the left and right node, respectively;
             # note that the medians are forbidden alternately
             ##############################################################################################
-            
+            if i % 2:
+                leftforbidden[sortedids[i]] = True
+            else:
+                rightforbidden[sortedids[i]] = True
             
             
         ##############################################################################################
@@ -139,11 +156,14 @@ class BranchruleSemiassign(Branchrule):
         ##############################################################################################
             
         # create left child and add constraint
-                
+        leftChild = self.model.createChild(-self.model.getDualbound(), self.model.getLocalEstimate())
+        cons = self.conshdlr.createConsSemiassign("forbid_{0}_{1}".format(location, leftforbidden), location, leftforbidden, leftChild)
+        self.model.addConsNode(leftChild, cons)
 
         # create right child and add constraint
-        
-        
+        rightChild = self.model.createChild(-self.model.getDualbound(),self.model.getLocalEstimate())
+        cons = self.conshdlr.createConsSemiassign("forbid_{0}_{1}".format(location, rightforbidden), location, rightforbidden, rightChild)
+        self.model.addConsNode(rightChild, cons)
         
         return {'result':SCIP_RESULT.SUCCESS}
     

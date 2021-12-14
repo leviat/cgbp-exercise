@@ -120,16 +120,16 @@ def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveintege
     pricer.forbiddenassignments = forbiddenassignments
     
     master.optimize()
-    master.writeLP(filename="test.lp")
+    #master.writeLP(filename="test.lp")
 
     
 if __name__ == '__main__':
     # Change the name of the instance to test different instances
-    nlocations, nclusters, distances, demands, capacities = reader_cpmp.read_instance('../instances/p25/p25-01.cpmp')
+    nlocations, nclusters, distances, demands, capacities = reader_cpmp.read_instance('../instances/p25/p25-10.cpmp')
     
     # If solveinteger is True, we will solve the problem as an Integer Program, i.e., variables will be added as binary 'B' variables.
     # If solveinteger is False, we will solve the LP-relaxation, i.e., variables will be added as continuous 'C' variables.
-    solveinteger = False
+    solveinteger = True
     
     # If semiassignmentbranching is True, we will use semiassignment branching. 
     # If semiassignmentbranching is False, we will not use semiassignment branching. 
