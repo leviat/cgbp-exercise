@@ -9,6 +9,8 @@ Created on Mon Nov  9 13:43:18 2020
 from pyscipopt import Branchrule, SCIP_RESULT
 import numpy
 
+EPS = 1.e-10
+
 class BranchruleSemiassign(Branchrule):
     def __init__(self, pricer, conshdlr):
         super().__init__()
@@ -96,7 +98,7 @@ class BranchruleSemiassign(Branchrule):
             for j in range(nlocations):
                 fractional = self.model.frac(assignments[i][j])
                 
-                if fractional > 0:
+                if fractional > EPS:
                     nfracmedians += 1
                     totfrac += assignments[i][j]
                     if (j % 2 == 0): # check if median is even
