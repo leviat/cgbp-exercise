@@ -19,7 +19,7 @@ EPS = 1.e-10
 
 
     
-def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveinteger, semiassignmentbranching):
+def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveinteger, semiassignmentbranching, use_mip):
     # Create solver instance
     master = Model("CPMP")
     
@@ -37,7 +37,7 @@ def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveintege
     master.setMinimize()
     
     # Creating a pricer
-    pricer = pricer_cpmp.PricerCPMP(solveinteger)
+    pricer = pricer_cpmp.PricerCPMP(solveinteger, use_mip)
     master.includePricer(pricer, "PricerCPMP", "Pricer to identify new CPMP assignment patterns")
     
     if solveinteger and semiassignmentbranching:
@@ -121,11 +121,10 @@ def test_cpmp(nlocations, nclusters, distances, demands, capacities, solveintege
     
     master.optimize()
     #master.writeLP(filename="test.lp")
-
     
 if __name__ == '__main__':
     # Change the name of the instance to test different instances
-    nlocations, nclusters, distances, demands, capacities = reader_cpmp.read_instance('../instances/p25/p25-10.cpmp')
+    nlocations, nclusters, distances, demands, capacities = reader_cpmp.read_instance('../instances/p2050/p2050-01.cpmp')
     
     # If solveinteger is True, we will solve the problem as an Integer Program, i.e., variables will be added as binary 'B' variables.
     # If solveinteger is False, we will solve the LP-relaxation, i.e., variables will be added as continuous 'C' variables.
@@ -140,6 +139,8 @@ if __name__ == '__main__':
     # behaviour of the program be? Would it be correct? Justify your answer.
     ############################################################################################################
     semiassignmentbranching = True
+    
+    use_mip = False # do we use the mip solver instead of googles knapsack solver?
 
-    test_cpmp(nlocations, nclusters, distances, demands, capacities, solveinteger, semiassignmentbranching)
+    test_cpmp(nlocations, nclusters, distances, demands, capacities, solveinteger, semiassignmentbranching, use_mip)
     

@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import List
 
 import math
+import knapsacksolver
 
 EPS = 1.e-10
 LONG_INT_MAX = 9223372036854775807
@@ -31,7 +32,7 @@ class PatternVarData:
 
 
 class PricerCPMP(Pricer):       
-    def __init__(self, solveinteger):
+    def __init__(self, solveinteger, use_mip):
         self.nlocations = 0
         self.nclusters = 0
         self.distances = {}
@@ -55,6 +56,8 @@ class PricerCPMP(Pricer):
         # If True, in addColumn variables are added as 'B' 
         # If False, in addColumn variables are added as 'C' 
         self.solveinteger = solveinteger
+        
+        self.use_mip = use_mip # if true we use the mip solver instead of the google knapsack solver
 
     # 
     # Local methods
@@ -154,7 +157,7 @@ class PricerCPMP(Pricer):
                         profits.append(-self.model.getDualfarkasLinear(self.assignmentConss[location]))
 
             
-
+            
             ####################################################################################################
             # TODO: Prepare the data for the ortools knapsack solver. You have to consider the following points:
             # * The expected data format is as in the following artificialexample: 
@@ -170,33 +173,28 @@ class PricerCPMP(Pricer):
             # this initialization if necessary
             myItems = []
             profitsSolver = []
-            itemDemandsSolver = [[]]
+            weightsSolver = [[]]
             capacitiesSolver = [self.capacities[median]]
             
-            for i in range(len(items)):
-                if profits[i] >= 0:
-                    # TODO: is this the right method to handle non-integer profits?
-                    profitsSolver.append(int(math.ceil(profits[i] * 1e6)))
-                    itemDemandsSolver[0].append(itemDemands[i])
-                    myItems.append(items[i]) # add the associated location for reprojection
-            
-            # initialize the ortools Knapsack solver
-            knapsackSolver = pywrapknapsack_solver.KnapsackSolver(pywrapknapsack_solver.KnapsackSolver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER, 'KnapsackExample')
-            knapsackSolver.Init(profitsSolver,itemDemandsSolver,capacitiesSolver)
-            # solve the subproblem
-            computed_value = knapsackSolver.Solve()
-            
-            # gather the results from the ortools Knapsack solver
-            packed_items = []
-            packed_weights = []
-            total_weight = 0
-            for i in range(len(profitsSolver)):
-                if knapsackSolver.BestSolutionContains(i):
-                    packed_items.append(myItems[i])
-                    packed_weights.append(itemDemandsSolver[0][i])
-                    total_weight += itemDemandsSolver[0][i]
+            if self.use_mip:
+                packed_items = knapsacksolver.solve(profits, itemDemands, self.capacities[median])
+                packed_items = [items[i] for i in packed_items] # re-project to original item / location ids
+            else:
+                for i in range(len(items)):
+                    if profits[i] > EPS:
+                        profitsSolver.append(int(math.ceil(profits[i] / EPS))) # divide by eps to get eps precision as integer
+                        weightsSolver[0].append(itemDemands[i])
+                        myItems.append(items[i]) # add the associated location for reprojection
 
-            
+                # initialize the ortools Knapsack solver
+                knapsackSolver = pywrapknapsack_solver.KnapsackSolver(pywrapknapsack_solver.KnapsackSolver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER, 'KnapsackExample')
+                knapsackSolver.Init(profitsSolver,weightsSolver,capacitiesSolver)
+                # solve the subproblem
+                computed_value = knapsackSolver.Solve()
+
+                # gather the results from the ortools Knapsack solver
+                packed_items = [myItems[i] for i in range(len(profitsSolver)) if knapsackSolver.BestSolutionContains(i)]
+
             ####################################################################################################
             # TODO: now that a column has been calculated, 
             # 1) calculate its reduced cost or Farkas coefficient (to be stored in 'score'); 
@@ -216,10 +214,11 @@ class PricerCPMP(Pricer):
                 score += sum([self.model.getDualfarkasLinear(self.assignmentConss[location]) for location in packed_items])
                 score -= self.model.getDualfarkasLinear(self.pmedianCons)
                 score -= self.model.getDualfarkasLinear(self.convexityConss[median])
-             
+                
             if score < 0 - EPS:
                 self.addColumn(median, packed_items)
             
+            #print("{0} of {1} have been priced.".format(median + 1, self.nlocations))
             
             ####################################################################################################
             # TODO: (AT THE END OF THE EXERCISE, FOR THE ANALYSIS PART OF THE REPORT)
