@@ -34,7 +34,6 @@ def read_instance(filename):
         nlocations = 0
         nclusters = 0
         sp = line.split()
-        print(line)
         if len(sp) > 0 and sp[0].isnumeric():
             assert len(sp) == 2
             assert is_integer(sp[0]) and is_integer(sp[1])
@@ -52,7 +51,6 @@ def read_instance(filename):
         for i in range(nlocations):
             line = fp.readline()
             sp = line.split()
-            print(line)
             if len(sp) > 0 and sp[0].isnumeric():
                 assert len(sp) == nlocations
                 is_int = True
